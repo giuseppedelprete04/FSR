@@ -6,8 +6,8 @@
 #define k1 5
 #define k2 5
 #define max_ang 1.5
-#define wheel_radius (0.09)
-#define wheel_dist 0.315
+#define wheel_radius (0.179/2.0)
+#define wheel_dist 0.335
 
 
 class Controller {
@@ -22,6 +22,7 @@ class Controller {
              ros::Publisher ang_vel;
              ros::Publisher tracking_error;
              ros::Publisher yaw_error;
+             ros::Publisher real_dist;
              vector <double> des_vel_x;
              vector <double> des_vel_y;
              vector <double> des_pos_x;
@@ -35,7 +36,6 @@ class Controller {
              double left_wheel;
              double right_wheel;
              int end;
-             //bool semaforo;
       public:
              Controller ();
              bool trovato;
@@ -57,12 +57,12 @@ class Controller {
 Controller::Controller() {
       trovato=false;
       end=0;
-      //semaforo=false;
       vel_pub = nh.advertise <geometry_msgs::Twist>("cmd_vel",0);
       pos_sub = nh.subscribe("odom",0,&Controller::odom_cb,this);
       joint_sub = nh.subscribe("diff_wheels/vel",0,&Controller::joint_cb,this);
       planned_vel = nh.advertise <std_msgs::Float64>("velocity",0);
       yaw_error = nh.advertise <std_msgs::Float64>("yaw_err",0);
+      real_dist = nh.advertise <std_msgs::Float64>("dist",0);
       planned_pos = nh.advertise <geometry_msgs::PointStamped>("position",0);
       lin_vel = nh.advertise <std_msgs::Float64>("cmd_lin",0);
       ang_vel = nh.advertise <std_msgs::Float64>("cmd_ang",0);
@@ -96,13 +96,9 @@ void Controller::estimate_yaw () {
      while(ros::ok()) {
      if(end<10) {
      double w_k=-(wheel_radius/wheel_dist)*(right_wheel-left_wheel);
-     //odom_pos[2]=odom_pos[2]+(old_w_k*(0.01/2))+(w_k*(0.01/2));
      odom_pos[2]=odom_pos[2]+(w_k*0.001);
-     //odom_pos[2]=yaw;
      if(odom_pos[2]<-M_PI) odom_pos[2]+=(2*M_PI);
      if (odom_pos[2]>M_PI) odom_pos[2]-=(2*M_PI);
-     //old_w_k=w_k;
-      //cout << "Thread eseguito" << endl;
       end++;
       r.sleep();
      }
@@ -114,7 +110,9 @@ void Controller:: thread () {
 }
 
 void Controller:: control(int i) {
+     double real_distance=0.0;
      std_msgs::Float64 msg;
+     std_msgs::Float64 distance;
      std_msgs::Float64 yaw_err;
      std_msgs:: Float64MultiArray err;
      double local_yaw=odom_pos[2];
@@ -122,13 +120,10 @@ void Controller:: control(int i) {
      double w_k=-(wheel_radius/wheel_dist)*(right_wheel-left_wheel);
      odom_pos[0]=odom_pos[0]+(v_k*dt*cos(local_yaw+((w_k*dt)/2)));
      odom_pos[1]=odom_pos[1]+(v_k*dt*sin(local_yaw+((w_k*dt)/2)));
-     //odom_pos[2]=estimate_yaw();
      cout << "Yaw : " << yaw << " " << odom_pos[2] << endl;
      /*cout << "X : " << position[0] << " " << odom_pos[0] << endl;
      cout << "Y : " << position[1] << " " << odom_pos[1] << endl;*/
-    yaw_err.data=abs(yaw)-abs(odom_pos[2]);
-     //double x=position [0];
-     //double y=position [1];
+     yaw_err.data=abs(yaw)-abs(odom_pos[2]);
      double x=odom_pos [0];
      double y=odom_pos [1];
      double linear_vel=0.0;
@@ -150,8 +145,6 @@ void Controller:: control(int i) {
      //cout << y1d-y1 << " " << y2d-y2 << endl;
      linear_vel=T_inv[0][0]*pseudo_vel[0]+T_inv[0][1]*pseudo_vel[1];
      angular_vel=T_inv[1][0]*pseudo_vel[0]+T_inv[1][1]*pseudo_vel[1];
-     //if (angular_vel>=max_ang) angular_vel=max_ang;
-     //if (angular_vel <=-max_ang) angular_vel=-max_ang;
      err.data.push_back(y1d-y1);
      err.data.push_back(y2d-y2);
      tracking_error.publish(err);
@@ -162,8 +155,11 @@ void Controller:: control(int i) {
      geometry_msgs::Twist velocities;
      velocities.linear.x=linear_vel;
      velocities.angular.z=angular_vel;
+     real_distance=(wheel_radius/yawdot)*(right_wheel-left_wheel);
      vel_pub.publish(velocities);
      yaw_error.publish(yaw_err);
+     distance.data=real_distance;
+     real_dist.publish(distance);
 }
 
 void Controller::set_path(vector<geometry_msgs::PoseStamped> pos, vector <geometry_msgs::TwistStamped> vel) {
@@ -229,7 +225,6 @@ int main(int argc, char **argv){
 
   }
   p.set_init(c.get_y()-y_offset,c.get_x()-x_offset);
-  //cout << c.get_y() << " " << c.get_x() << endl;
   p.plan(12.5,10);
   c.set_path(p.poses_traj,p.vel_traj);
   c.thread();

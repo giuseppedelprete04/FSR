@@ -140,12 +140,7 @@ void Planner::rep_potential (int x, int y) {
 
 void Planner::compute_rep_potential() {
  int count =0;
- vector <int8_t> proof;
  vector <int8_t> proof2;
- //ofstream myfile;
- //ifstream fileName;
- int8_t data;
- int8_t a;
  for (unsigned int x = 0; x < height; x++) {
     for (unsigned int y = 0; y < width; y++) {
         if (repulsive_mat[x][y]==0) {
@@ -154,29 +149,6 @@ void Planner::compute_rep_potential() {
         proof2.push_back(round(repulsive_mat[x][y]));
     }
   }
-  /*myfile.open("file.txt",ios::binary|ios::out);
-  for (unsigned int x = 0; x < height; x++) {
-    for (unsigned int y = 0; y < width; y++) {
-        a=round(repulsive_mat[x][y]);
-        proof.push_back(a);
-        myfile.write((char*) &a,sizeof(int8_t));
-    }
-  }
-  myfile.close();
-  fileName.open("file.txt",ios::binary|ios::in);
-  while (!fileName.eof()&&count<(height*width)) 
-      {
-         int8_t v;
-         fileName.read((char*)&v,sizeof(int8_t));
-         proof2.push_back(v);
-         count++;
-      }
-  fileName.close();
-  for (unsigned int x = 0; x < height; x++) {
-    for (unsigned int y = 0; y < width; y++) {
-        repulsive_mat[x][y]=proof2[y+width*x];
-    }
-  }*/
   cout << count << " " << width*height << endl;
   nav_msgs::OccupancyGrid grid;
   grid.header.stamp=ros::Time::now();
