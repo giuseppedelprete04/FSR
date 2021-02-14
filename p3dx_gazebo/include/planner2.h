@@ -26,7 +26,7 @@
 #define y_offset -15.4
 #define influence 7
 #define resolution 0.05
-//#define unit mul/100
+
 using namespace std;
 
 struct Gradient {
